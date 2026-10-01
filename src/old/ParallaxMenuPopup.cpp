@@ -1,0 +1,943 @@
+// #include <nwo5.silly-api/include/include.hpp>
+// #include "ParallaxMenuPopup.hpp"
+// #include "ParallaxMenuLayerNode.hpp"
+// #include "SortPopup.hpp"
+// #include "DuplicateAndLayerPopup.hpp"
+// #include "utils/Constants.hpp"
+// #include "utils/Utils.hpp"
+
+// using namespace nwo5::editor::prelude;
+
+// void ParallaxMenuPopup::loadSetupLayerList(ParallaxSetup *setup)
+// {
+//     //reset the nodes because we cant just delete them apparently
+//     m_nextLayerListNode = 0;
+//     auto nodes = m_layerListMenu->getChildrenExt();
+//     for(auto node : nodes){
+//         auto layerNode = static_cast<ParallaxMenuLayerNode*>(node);
+//         layerNode->setVisible(false);
+//         layerNode->defocus();
+//     }
+
+//     if(setup){
+//         auto sortedLayers = setup->sortBySortingType(ph::utils::getSortingType());
+//         for(auto layerPtr : sortedLayers){
+//             addLayerNodeToList(layerPtr);
+//         }
+//     }
+
+//     //update everything in the right order
+//     m_layerListMenu->updateLayout();
+//     m_scrollLayer->updateLayout();
+//     m_layerListBackground->updateLayout();
+// }
+
+// void ParallaxMenuPopup::initSetupSwitcher()
+// {
+//     //create the setup swticher (maybe make this a custom node later?)
+
+//     auto setupSwitcherMenu = CCMenu::create();
+//     //setupSwitcherMenu->setPosition({padAmount,popupHeight-padAmount-setupSwitcherHeight});
+//     setupSwitcherMenu->setLayoutOptions(
+//         AnchorLayoutOptions::create()
+//         ->setAnchor(Anchor::TopLeft)
+//         ->setOffset({10.f,-30.f})
+//     );
+//     setupSwitcherMenu->setScale(0.8f);
+
+//     setupSwitcherMenu->setContentSize({SETUP_SWITCHER_WIDTH,SETUP_SWITCHER_HEIGHT});
+//     m_setupSwitcherPrevButton = Button::createWithSpriteFrameName("GJ_arrow_01_001.png", [this](Button*) {
+//         m_selectedSetupIndex--;
+//         this->loadSetupLayerList(getSelectedSetup());
+//         this->updateAllUI();
+//     });
+//     m_setupSwitcherNextButton = Button::createWithSpriteFrameName("GJ_arrow_01_001.png", [this](Button*) {
+//         m_selectedSetupIndex++;
+//         this->loadSetupLayerList(getSelectedSetup());
+//         this->updateAllUI();
+// 	});
+//     auto nextButtonSprite = m_setupSwitcherNextButton->getChildByType<CCSprite>();
+//     nextButtonSprite->setFlipX(true);
+
+//     m_setupSwitcherPrevButton->setPosition({0.0,SETUP_SWITCHER_HEIGHT/2});
+//     m_setupSwitcherNextButton->setPosition({SETUP_SWITCHER_WIDTH,SETUP_SWITCHER_HEIGHT/2});
+//     m_setupSwitcherPrevButton->setScale(SETUP_SWITCHER_BUTTON_SCALE);
+//     m_setupSwitcherNextButton->setScale(SETUP_SWITCHER_BUTTON_SCALE);
+//     setupSwitcherMenu->addChild(m_setupSwitcherPrevButton);
+//     setupSwitcherMenu->addChild(m_setupSwitcherNextButton);
+
+//     m_setupSelectorLabel = Label::create("","bigFont.fnt");
+//     setupSwitcherMenu->addChild(m_setupSelectorLabel);
+//     m_setupSelectorLabel->setPosition({SETUP_SWITCHER_WIDTH/2,SETUP_SWITCHER_HEIGHT/2});
+
+
+//     auto newSetupButton = Button::createWithSpriteFrameName("GJ_plusBtn_001.png", [this](Button* btn) {
+//         this->onCreateSetupButton(btn);
+//     });
+//     newSetupButton->setPosition(120,SETUP_SWITCHER_HEIGHT/2);
+//     newSetupButton->setScale(0.6f);
+//     setupSwitcherMenu->addChild(newSetupButton);
+//     newSetupButton->setUserObject("nwo5.silly-api/tooltip", nwo5::ui::TooltipInfo::create("Create New Setup"));
+
+//     m_mainLayer->addChild(setupSwitcherMenu);
+// }
+
+// std::string getKeybindStringForInfo(const std::vector<geode::Keybind>& keybinds){
+//     std::string ret = "";
+
+//     for(size_t i = 0;i<keybinds.size();i++){
+//         const auto& keyBind = keybinds[i];
+//         //if this is the last one we dont need to add a comma
+//         if(i>=(keybinds.size()-1)){
+//             ret+=keyBind.toString();
+//             continue;
+//         }
+//         //else if its the second to last one add an or
+//         if(i==(keybinds.size()-2)){
+//             ret+=keyBind.toString()+", or ";
+
+//             continue;
+//         }
+//         //otherwise just add a comma
+//         ret+=keyBind.toString()+", ";
+//     }
+
+//     return ret;
+// }
+
+// void ParallaxMenuPopup::initInfoButtons()
+// {
+//     //this might be able to be moved where the label is created
+//     auto layerListInfoButton = Button::createWithSpriteFrameName("GJ_infoIcon_001.png", [this](Button*) {
+//         auto keybindsUp = Mod::get()->getSettingValue<std::vector<geode::Keybind>>("keybind-layerlist-up");
+//         auto keybindsDown = Mod::get()->getSettingValue<std::vector<geode::Keybind>>("keybind-layerlist-down");
+        
+//         //build the string line by line
+//         //i know this is slower but its way more readable
+//         std::string infoStr = fmt::format(
+//         "Each layer has a <cg>GroupID</c> as shown in the two circles.\n"
+//         "You can also change the <cd>Depth</c> of each layer.\n"
+//         "<cr>positive</c> numbers go into the background.\n"
+//         "<cj>Negative</c> numbers go into the foreground.\n"
+//         "Note that the max depth is 1, representing the given layer being infinitely far into the background.\n"
+//         //"The color of the \"Depth:\" text indicates if a given layer is behind or in front of the player.\n"
+//         "You can use the <cs>{}</c> and <cs>{}</c> keys to move between layers without needing to move your mouse cursor.",
+//         getKeybindStringForInfo(keybindsUp),getKeybindStringForInfo(keybindsDown));
+//         //infoStr+="\nYou can also press the <cs>N</c> key to invert numbers but thats a vanilla feature.";
+
+//         auto alert = FLAlertLayer::create(
+//             nullptr,
+//             "Info",
+//             infoStr,
+//             "ok",
+//             nullptr,
+//             450
+//         );
+
+//         alert->show();
+//     });
+//     layerListInfoButton->setPosition(92,20);
+//     layerListInfoButton->setScale(0.5f);
+
+//     m_layerListLabel->addChild(layerListInfoButton);
+// }
+// void ParallaxMenuPopup::initLayerList()
+// {
+
+//     m_layerListBackground = NineSlice::create("square02b_001.png");
+//     m_layerListBackground->setColor(ccBLACK);
+//     m_layerListBackground->setOpacity(44);
+//     m_layerListBackground->setAnchorPoint({1.0f,0.0f});
+
+//     m_layerListBackground->setContentSize({LAYER_LIST_WIDTH,LAYER_LIST_HEIGHT});
+    
+//     m_layerListBackground->setLayoutOptions(
+//         AnchorLayoutOptions::create()
+//         ->setAnchor(Anchor::BottomRight)
+//         ->setOffset({-PAD_AMOUNT,PAD_AMOUNT})
+//     );
+
+//     m_layerListBackground->setLayout(
+//         AxisLayout::create()
+//         ->setPadding({5.0f,5.0f,5.0f,5.0f})
+//     );
+
+//     m_mainLayer->addChild(m_layerListBackground);
+
+//     m_layerListMenu = CCMenu::create();
+//     m_layerListMenu->setLayout(
+//         AxisLayout::create(Axis::Column)
+//         ->setAutoGrowAxis({0.0f})
+//         ->setGap(0.0f)
+//         ->setAxisReverse(true)//so 0 is at the top
+//     );
+    
+
+//     m_scrollLayer = AdvancedScrollLayer::create({LAYER_LIST_WIDTH,LAYER_LIST_SCROLL_LAYER_HEIGHT});
+//     m_scrollLayer->setAnchorPoint({0.0f,0.0f});
+//     m_scrollLayer->setLayout(AxisLayout::create());
+//     m_scrollLayer->setKeyboardEnabled(false);//could make this be enabled as long as there is no text input selected later
+    
+//     m_layerListScrollBar = AdvancedScrollBar::create(m_scrollLayer,ScrollOrientation::VERTICAL);
+
+//     m_layerListBackground->addChild(m_scrollLayer);
+//     m_layerListBackground->addChild(m_layerListScrollBar);
+//     m_scrollLayer->addChild(m_layerListMenu);
+    
+//     auto setup = getSelectedSetup();
+//     loadSetupLayerList(setup);
+// }
+// void ParallaxMenuPopup::initDevButtons()
+// {
+//     //create the menu for test stuff (give this nicer ui later)
+//     auto dev_actionButtonMenu = CCMenu::create();
+    
+//     dev_actionButtonMenu->setLayout(AxisLayout::create()
+//         ->setAxis(Axis::Column)
+//         ->setAxisAlignment(AxisAlignment::Start)
+//         ->setCrossAxisLineAlignment(AxisAlignment::Start)
+//     );
+//     dev_actionButtonMenu->setAnchorPoint({0.0f,0.0f});
+//     dev_actionButtonMenu->setPosition({PAD_AMOUNT,PAD_AMOUNT+35.0f});
+//     dev_actionButtonMenu->setScale(0.45f);
+    
+//     auto addDevBtn = [&](const char *caption,cocos2d::SEL_MenuHandler callback){
+//         auto btn = CCMenuItemSpriteExtra::create(
+//             ButtonSprite::create(caption),
+//             this,
+//             callback
+//         );
+//         dev_actionButtonMenu->addChild(btn);
+//         return btn;//cuz why not
+//     };
+
+//     addDevBtn("Duplicate and Layer Selected",menu_selector(ParallaxMenuPopup::onDuplicateAndLayerButton));
+//     addDevBtn("Create Quick Gradient",menu_selector(ParallaxMenuPopup::onCreateQuickGradientButton));
+    
+
+//     //auto dev_deleteUnusedLayersButton = CCMenuItemSpriteExtra::create(
+//     //    ButtonSprite::create("Delete Unused Layers"),
+//     //    this,
+//     //    nullptr//TODO: impl
+//     //);
+
+//     auto dev_stupidLabel = Label::create("TEMPORARY DEV BUTTONS","goldFont.fnt");
+//     dev_actionButtonMenu->addChild(dev_stupidLabel);
+//     dev_actionButtonMenu->updateLayout();
+
+//     m_mainLayer->addChild(dev_actionButtonMenu);
+// }
+
+// //todo: clean up this init ui function
+// bool ParallaxMenuPopup::init()
+// {
+
+//     if (!Popup::init({POPUP_WIDTH, POPUP_HEIGHT})) return false;
+//     //popup settings
+//     m_noElasticity = true;
+//     m_closeBtn->setVisible(false);
+
+//     //initialize the tootip
+//     auto tooltip = nwo5::ui::Tooltip::create("chatFont.fnt");
+//     tooltip->setScale(0.5f);//scale this down
+//     m_mainLayer->addChild(tooltip);
+    
+//     m_parallaxSetupList.scanEditorForSetups(editor::layer());
+    
+//     initLayerList();
+
+//     /*
+//         CREATE THE SORT BUTTON FOR THE LAYER LIST
+//     */
+//     auto sortMenu = CCMenu::create();
+//     sortMenu->setAnchorPoint({1.0f,1.0f});
+//     sortMenu->setPosition({LAYER_LIST_X,POPUP_HEIGHT-PAD_AMOUNT});
+//     sortMenu->setScale(0.75f);
+//     sortMenu->setContentSize({200.0f,30.0f});
+//     sortMenu->setLayout(
+//         AxisLayout::create()
+//         ->setAxisAlignment(AxisAlignment::End)
+//     );
+//     m_sortButton = Button::createWithNode(
+//         EditorButtonSprite::createWithSpriteFrameName("GJ_sortIcon_001.png"), 
+//         [this](Button* btn){
+//             SortPopup::create([this](SortPopup* popup){
+//                 //save the sorting and then refresh
+//                 Mod::get()->setSavedValue<int>(ph::constants::SELECTED_SORTING_ID, popup->getSelectedSortingID());
+//                 //re-sort the menu
+//                 loadSetupLayerList(getSelectedSetup());
+//             })->show();
+//         }
+//     );
+
+//     sortMenu->addChild(m_sortButton);
+//     sortMenu->updateLayout();
+//     m_mainLayer->addChild(sortMenu);
+//     /*
+//         CREATE THE ADD LAYER BUTTON
+//     */
+//     auto addLayerMenu = CCMenu::create();
+//     addLayerMenu->setAnchorPoint({0.0f,1.0f});
+//     addLayerMenu->setPosition({LAYER_LIST_X-LAYER_LIST_WIDTH,POPUP_HEIGHT-PAD_AMOUNT});
+//     addLayerMenu->setScale(0.75f);
+//     addLayerMenu->setContentSize({200.0f,30.0f});
+//     addLayerMenu->setLayout(
+//         AxisLayout::create()
+//         ->setAxisAlignment(AxisAlignment::Start)
+//     );
+    
+//     m_addLayerButton = Button::createWithNode(
+//         EditorButtonSprite::createWithSpriteFrameName("edit_addCBtn_001.png"), 
+//         [this](Button* btn){
+//             this->onAddLayerButton(btn);
+//         }
+//     );
+//     m_addLayerButton->setUserObject("nwo5.silly-api/tooltip", nwo5::ui::TooltipInfo::create("Add Layer"));
+    
+//     addLayerMenu->addChild(m_addLayerButton);
+//     addLayerMenu->updateLayout();
+//     m_mainLayer->addChild(addLayerMenu);
+
+//     /*
+//         CREATE THE LABEL FOR THE LAYER LIST
+//     */
+//     m_layerListLabel = Label::create("Layers","goldFont.fnt");
+//     //place it right above the layer list
+//     //try to line the y up with the sort button
+//     m_layerListLabel->setPosition(POPUP_WIDTH-PAD_AMOUNT-(LAYER_LIST_WIDTH/2),LAYER_LIST_HEIGHT+PAD_AMOUNT+3.0f);
+//     m_layerListLabel->setAnchorPoint({0.5f,0.0f});
+
+//     m_mainLayer->addChild(m_layerListLabel);
+    
+//     //add a label for the layer list
+//     m_layerListHint = Label::create("","bigFont.fnt");
+//     m_mainLayer->addChild(m_layerListHint);
+//     m_layerListHint->setPosition(POPUP_WIDTH-(PAD_AMOUNT*1.25f)-LAYER_LIST_WIDTH+(m_layerListScrollBar->getPositionX()/2),PAD_AMOUNT+(LAYER_LIST_HEIGHT/2));
+//     m_layerListHint->setScale(0.3f);
+//     m_layerListHint->setColor(ph::constants::DISABLED_COLOR);
+//     m_layerListHint->setOpacity(ph::constants::DISABLED_ALPHA);
+
+//     auto setupOptionsBackground = NineSlice::create("square02b_001.png");
+//     setupOptionsBackground->setColor(ccBLACK);
+//     setupOptionsBackground->setOpacity(44);
+//     setupOptionsBackground->setAnchorPoint({0.0f,0.5f});
+//     setupOptionsBackground->setPosition(PAD_AMOUNT,POPUP_HEIGHT/2);
+//     m_mainLayer->addChild(setupOptionsBackground);
+
+//     auto durationInputMenu = CCMenu::create();
+//     setupOptionsBackground->addChild(durationInputMenu);
+
+//     m_durationInput = CustomNumberInput::create(100.0f);
+
+//     auto durationInputLabel = Label::create("Duration:","bigFont.fnt");
+        
+//     m_durationInput->setCallback([this](const std::string&){
+//         auto setup = getSelectedSetup();
+//         if(!setup) return;
+        
+//         setup->setDuration(m_durationInput->getNumber<float>());
+//     });
+
+//     auto makeDurationInfiniteButton = CCMenuItemSpriteExtra::create(
+//         ButtonSprite::create("Inf."),
+//         this,
+//         menu_selector(ParallaxMenuPopup::onMakeDurationInfiniteButton)
+//     );
+    
+//     durationInputMenu->addChild(durationInputLabel);
+//     durationInputMenu->addChild(m_durationInput);
+//     durationInputMenu->addChild(makeDurationInfiniteButton);
+//     durationInputMenu->setLayout(
+//         AxisLayout::create()
+//         ->setAxis(Axis::Row)
+//     );
+//     durationInputMenu->setPosition(PAD_AMOUNT,PAD_AMOUNT);
+//     durationInputMenu->setAnchorPoint({0.0f,0.0f});
+//     durationInputMenu->setContentSize({SETUP_OPTIONS_WIDTH/DURATION_INPUT_SCALE,1.0f});
+//     durationInputMenu->setScale(DURATION_INPUT_SCALE);
+//     durationInputMenu->updateLayout();
+
+//     auto setupActionMenu = CCMenu::create();
+//     setupActionMenu->setLayout(
+//         AxisLayout::create()
+//         ->setAxis(Axis::Row)
+//     );
+//     setupActionMenu->setAnchorPoint({0.0f,0.0f});
+//     setupActionMenu->setPosition(PAD_AMOUNT,30);
+//     setupActionMenu->setContentSize({SETUP_OPTIONS_WIDTH/ACTION_BUTTON_SCALE,SETUP_ACTION_BUTTON_SIZE});
+//     setupActionMenu->setScale(ACTION_BUTTON_SCALE);
+//     setupOptionsBackground->addChild(setupActionMenu);
+
+//     m_findCenterButton = Button::createWithSpriteFrameName("gj_findBtn_001.png", [this](Button* btn) {
+//         this->onFindCenterButton(btn);
+//     });
+//     m_findCenterButton->setUserObject("nwo5.silly-api/tooltip", nwo5::ui::TooltipInfo::create("Find Center Objects In Editor"));
+//     setupActionMenu->addChild(m_findCenterButton);
+//     m_findSetupButton = Button::createWithSpriteFrameName("gj_findBtn_001.png", [this](Button* btn) {
+//         this->onFindSetupInEditorButton(btn);
+//     });
+//     m_findSetupButton->setUserObject("nwo5.silly-api/tooltip", nwo5::ui::TooltipInfo::create("Find Setup In Editor"));
+//     setupActionMenu->addChild(m_findSetupButton);
+//     m_cleanSetupButton = Button::createWithSprite("CleanUpButton.png"_spr, [this](Button* btn) {
+//         this->onCleanupTriggersButton(btn);
+//     });
+//     m_cleanSetupButton->setUserObject("nwo5.silly-api/tooltip", nwo5::ui::TooltipInfo::create("Clean Up Setup"));
+//     setupActionMenu->addChild(m_cleanSetupButton);
+//     m_deleteSetupButton = Button::createWithSprite("deleteButton.png"_spr, [this](Button* btn) {
+//         this->onDeleteSetupButton(btn);
+//     });
+//     m_deleteSetupButton->setUserObject("nwo5.silly-api/tooltip", nwo5::ui::TooltipInfo::create("Delete Setup"));
+//     setupActionMenu->addChild(m_deleteSetupButton);
+    
+
+//     setupActionMenu->updateLayout();
+
+//     //just make sure this matches up
+//     m_findSetupButton->setContentSize({SETUP_ACTION_BUTTON_SIZE,SETUP_ACTION_BUTTON_SIZE});
+//     m_cleanSetupButton->setContentSize({SETUP_ACTION_BUTTON_SIZE,SETUP_ACTION_BUTTON_SIZE});
+
+//     //resize the background
+//     setupOptionsBackground->setContentSize({SETUP_OPTIONS_BACKGROUND_WIDTH,30+(SETUP_ACTION_BUTTON_SIZE*ACTION_BUTTON_SCALE)+PAD_AMOUNT});
+
+
+//     //create the ok button that closes the ui
+//     auto okButton = Button::createWithNode(ButtonSprite::create("OK",0.8f),[this](Button*){
+//         this->onClose(this);
+//     });
+//     okButton->setPosition(PAD_AMOUNT+(SETUP_OPTIONS_BACKGROUND_WIDTH/2),PAD_AMOUNT+(30/2));//buttons are 30 units tall
+//     m_mainLayer->addChild(okButton);
+
+
+//     initSetupSwitcher();
+//     initInfoButtons();
+
+//     //initDevButtons();
+
+//     updateAllUI();
+//     m_mainLayer->updateLayout();
+
+//     //the inputs
+//     m_upListener = listenForKeybindSettingPresses("keybind-layerlist-up", [this](Keybind const& keybind, bool down, bool repeat, double timestamp) {
+//         if (down) {
+//             this->changeFocusedLayer(-1);
+//         }
+//     });
+// 	m_downListener = listenForKeybindSettingPresses("keybind-layerlist-down", [this](Keybind const& keybind, bool down, bool repeat, double timestamp) {
+//         if (down) {
+//             this->changeFocusedLayer(1);
+//         }
+//     });
+
+//     return true;
+// }
+
+// void ParallaxMenuPopup::onMakeDurationInfiniteButton(CCObject *)
+// {
+//     auto setup = getSelectedSetup();
+//     if(!setup) return;
+//     m_durationInput->setString("-1");
+//     setup->setDuration(-1.0f);
+// }
+
+// void ParallaxMenuPopup::onDuplicateAndLayerButton(CCObject *)
+// {
+//     auto setup = getSelectedSetup();
+//     if(!setup) return;
+
+//     if(editor::selection::empty()){
+//         Notification::create("Please Select Some Objects First.")->show();
+//         return;
+//     }
+
+//     DuplicateAndLayerPopup::create([this](float rangeMin,float rangeMax, int count){
+//         auto setup = this->getSelectedSetup();
+//         if(!setup) return;
+
+
+//         if(editor::selection::empty()) return;//shouldnt be possible but better safe than sorry
+
+//         //now setup wich groups the objects need to be given
+//         //for now just create them all
+//         std::vector<ParallaxSetupLayer*> layers(count,nullptr);
+//         for(size_t i=0;i<count;i++){
+//             float v = float(i)/float(count-1);
+
+//             float depth = std::lerp(rangeMin,rangeMax,v);
+//             //later im gonna make it reuse existing layers
+//             layers[i] = setup->createNewLayer(depth);
+//         }
+
+
+
+
+//         //get the amount that the z order needs to be changed by
+//         int minZorder = 0;
+//         int maxZorder = 0;
+//         bool isFirst = false;
+//         for(auto& obj : editor::selection::getExt()){
+//             int zOrder = obj->getZOrder();
+
+//             if(!isFirst){
+//                 minZorder = zOrder;
+//                 maxZorder = zOrder;
+//                 isFirst=true;
+//                 continue;
+//             }
+
+//             if(zOrder>maxZorder) maxZorder = zOrder;
+//             if(zOrder<minZorder) minZorder = zOrder;
+//         }
+//         //now calculate it
+//         int zOrderOffset = (maxZorder - minZorder) + 1;
+
+//         auto objString = editor::ui()->copyObjectsDetailed(editor::selection::get());
+//         auto center = editor::selection::center();
+
+//         //delete the original
+//         editor::object::remove(editor::selection::get());
+
+//         //duplicate it!
+//         //TODO: add an option for this to go either backwards or forwards
+//         for(size_t i = 0; i<count;i++){
+//             auto pastedObjs = editor::ui()->pasteObjects(objString,true,false);
+//             editor::object::moveBy(pastedObjs,center);    
+
+//             //change the z order
+//             for(auto& obj : CCArrayExt<GameObject*>(pastedObjs)){
+//                 //setZOrder doesnt work for some reason
+//                 obj->m_zOrder = (obj->getZOrder() - (zOrderOffset * i));
+//             }
+
+//             editor::object::addGroup(pastedObjs,layers[i]->m_layerID);
+//         }
+
+//         //Notification::create(fmt::format("{} to {} | count: {}",rangeMin,rangeMax,count))->show();
+//         this->onClose(this);
+//     })->show();
+// }
+
+// void ParallaxMenuPopup::onCreateQuickGradientButton(CCObject *)
+// {
+//     int selObjectCount = editor::selection::count();
+//     if((selObjectCount < 3) || (selObjectCount > 4)){
+//         Notification::create("Select 3 or 4 objects.")->show();        
+//         return;
+//     }
+
+//     std::array<int,4> vertexGroupIds = {{0,0,0,0}};
+    
+//     //sort objects to be in the order: BL BR TL TR
+//     auto selectedObjects = editor::selection::getExt();
+//     //TODO: fix thissss
+
+//     //put the pointers in an array
+//     std::array<GameObject*,4> objArray = {{
+//         selectedObjects[0],
+//         selectedObjects[1],
+//         selectedObjects[2],
+//         (selObjectCount >= 4) ? selectedObjects[3] : selectedObjects[2]
+//     }};
+
+//     //sort from top to bottom
+//     std::ranges::sort(objArray,
+//         [](GameObject* a, GameObject* b) {
+//             return a->getPositionY() < b->getPositionY();
+//         }
+//     );
+//     //then sort from left to right
+//     if(objArray[0]->getPositionX() > objArray[1]->getPositionX())
+//         std::swap(objArray[0],objArray[1]);
+
+//     if(objArray[2]->getPositionX() > objArray[3]->getPositionX())
+//         std::swap(objArray[2],objArray[3]);
+
+//     size_t i = 0;
+//     for(auto& obj : objArray){
+//         //skip the final object if only 3 were selected
+//         if((selObjectCount <= 3) && (i >= 3)) continue;
+
+//         vertexGroupIds[i] = editor::layer()->getNextFreeGroupID(ph::constants::EMPTY_SET);
+//         obj->addToGroup(vertexGroupIds[i]);
+//         i++;
+//     }
+//     //now create the gradient trigger
+//     auto gradientTrigger = static_cast<GradientTriggerObject*>(editor::object::createObject(
+//         editor::trigger::GRADIENT_TRIGGER,
+//         editor::ui()->getGridSnappedPos(editor::center())
+//     ));
+
+//     gradientTrigger->m_vertexMode = true;
+//     gradientTrigger->m_gradientID = editor::layer()->getNextFreeGradientID(ph::constants::EMPTY_SET);
+    
+//     gradientTrigger->m_upBottomLeftID = vertexGroupIds[0];
+//     gradientTrigger->m_downBottomRightID = vertexGroupIds[1];
+//     gradientTrigger->m_leftTopLeftID = vertexGroupIds[2];
+//     if(selObjectCount==4) gradientTrigger->m_rightTopRightID = vertexGroupIds[3];
+//     else gradientTrigger->m_rightTopRightID = vertexGroupIds[2];
+
+//     editor::layer()->updateGradientLayers();
+// }
+
+// void ParallaxMenuPopup::updateSetupActionButtons()
+// {
+//     auto setup = getSelectedSetup();
+//     //maybe just have a list so i dont have to manually add all these
+//     if(setup){
+//         ph::utils::enableNode(m_addLayerButton);
+//         ph::utils::enableNode(m_sortButton);
+//         //actions
+//         ph::utils::enableNode(m_findCenterButton);
+//         ph::utils::enableNode(m_findSetupButton);
+//         ph::utils::enableNode(m_cleanSetupButton);
+//         ph::utils::enableNode(m_deleteSetupButton);
+//     }else{
+//         //
+//         ph::utils::disableNode(m_addLayerButton);
+//         ph::utils::disableNode(m_sortButton);
+//         //actions
+//         ph::utils::disableNode(m_findCenterButton);
+//         ph::utils::disableNode(m_findSetupButton);
+//         ph::utils::disableNode(m_cleanSetupButton);
+//         ph::utils::disableNode(m_deleteSetupButton);
+//     }
+// }
+
+// void ParallaxMenuPopup::updateLayerListHint()
+// {
+//     auto setup = getSelectedSetup();
+//     if(setup){
+//         if(setup->m_layers.empty()){
+//             m_layerListHint->setVisible(true);
+//             m_layerListHint->setText("(Press add to create layers)");
+//         }else{
+//             m_layerListHint->setVisible(false);
+//         }
+//     }else{
+//         m_layerListHint->setVisible(true);
+//         m_layerListHint->setText("(Create a setup to add layers)");
+//     }
+// }
+
+// void ParallaxMenuPopup::updateSetupSelector()
+// {    
+//     //exit if there is no setup selector
+//     if(!m_setupSelectorLabel) return;
+
+//     bool enablePrev = m_selectedSetupIndex>0;
+//     bool enableNext = (m_selectedSetupIndex+1)<(m_parallaxSetupList.m_setups.size());
+
+//     if(enablePrev) ph::utils::enableNode(m_setupSwitcherPrevButton);
+//     else ph::utils::disableNode(m_setupSwitcherPrevButton);
+
+//     if(enableNext) ph::utils::enableNode(m_setupSwitcherNextButton);
+//     else ph::utils::disableNode(m_setupSwitcherNextButton);
+    
+
+//     int setupCount = m_parallaxSetupList.m_setups.size();
+//     int setupIndex = (setupCount==0) ? 0 : m_selectedSetupIndex+1;
+
+//     m_setupSelectorLabel->setText(fmt::format("{}/{}",setupIndex,setupCount));
+// }
+// void ParallaxMenuPopup::updateSetupDurationInput()
+// {
+//     auto setup = getSelectedSetup();
+//     if(!setup) return; 
+        
+//     m_durationInput->setString(setup->getDurationString());
+// }
+
+// void ParallaxMenuPopup::onAddLayerButton(CCObject *){
+
+//     if(!editor::layer()) return;
+
+//     auto setup = getSelectedSetup();
+//     if(!setup) return;
+
+//     auto newLayer = setup->createNewLayer();
+
+//     //next add it to the ui
+//     addLayerNodeToList(newLayer);
+//     m_layerListMenu->updateLayout();
+//     m_scrollLayer->updateLayout();
+
+//     updateAllUI();
+//     //scroll to the index of the new
+//     scrollToLayerIndex(setup->getLayerCount()-1);
+// }
+// void ParallaxMenuPopup::onCleanupTriggersButton(CCObject *)
+// {
+//     //PROBABLY ADD A CONFIRMATION SCREEN
+
+//     //but uhh for now just do it
+//     auto setup = getSelectedSetup();
+//     if(!setup) return;
+
+//     //TODO: probably move this into parallaxSetup.cpp later
+
+//     auto basePosition = setup->m_areaMoveTriggerPtr->getPosition();
+//     //use the area move as the base
+//     //the follow trigger goes next to the area move trigger
+//     editor::object::move(setup->m_advancedFollowTriggerPtr,{basePosition.x+editor::constants::GRID_SIZE,basePosition.y});
+
+//     //for now just go through all the layers (maybe sort them later though)
+//     float y = basePosition.y;
+//     for(auto& layer : setup->m_layers){
+//         y+=editor::constants::GRID_SIZE;
+
+//         if(layer.hasScaleTrigger()) editor::object::move(layer.m_scaleTriggerPtr,{basePosition.x,y});
+//         editor::object::move(layer.m_followTriggerPtr,{basePosition.x+editor::constants::GRID_SIZE,y});
+//     }
+
+//     //DONT move the objects below the move trigger
+//     //there should only be 1 of each but this wont account for that yet
+//     //auto rootFollowObjPos = basePosition-CCPoint{0.0f,editor::constants::GRID_SIZE};
+
+//     //auto rootObjs = editor::objectsWithGroup(setup->m_rootID);
+//     //auto followObjs = editor::objectsWithGroup(setup->m_followID);
+
+//     //for(auto obj : CCArrayExt<GameObject*>(rootObjs)) editor::object::move(obj,rootFollowObjPos);
+//     //for(auto obj : CCArrayExt<GameObject*>(followObjs)) editor::object::move(obj,rootFollowObjPos);
+// }
+
+// void ParallaxMenuPopup::onDeleteSetupButton(CCObject *)
+// {
+//     createQuickPopup(
+//         "Warning!",
+//         "This will delete this setup along with all of its layers and center objects.\n"
+//         "Are you sure you want to delete this setup?",
+//         "Cancel",
+//         "Delete",
+//         420.0f,
+//         [this](FLAlertLayer*,bool confirmed){
+//             if(confirmed){
+//                 auto setup = getSelectedSetup();
+//                 if(!setup) return;
+
+//                 setup->deleteAllLayersAndLayerTriggers();
+
+//                 editor::object::remove(setup->m_areaMoveTriggerPtr);
+//                 editor::object::remove(setup->m_advancedFollowTriggerPtr);
+
+//                 setup->deleteAllRootAndFollowObjects();
+            
+//                 //now remove the setup from the list and update the ui
+//                 m_parallaxSetupList.removeSetupByIndex(m_selectedSetupIndex);
+
+//                 //reload ui
+//                 size_t setupCount = m_parallaxSetupList.m_setups.size();
+//                 if(m_selectedSetupIndex>=setupCount)
+//                     m_selectedSetupIndex = setupCount-1;
+
+//                 loadSetupLayerList(getSelectedSetup());
+//                 updateAllUI();
+//             }
+//         },
+//         true,true
+//     );
+// }
+
+// void ParallaxMenuPopup::onFindCenterButton(CCObject *)
+// {
+//     auto setup = getSelectedSetup();
+//     if(!setup) return;
+
+//     editor::selection::clear();
+//     //select the objects
+//     auto rootObjs = editor::objectsWithGroup(setup->m_rootID);
+//     auto followObjs = editor::objectsWithGroup(setup->m_followID);
+//     editor::selection::add(rootObjs);
+//     editor::selection::add(followObjs);
+//     //now go to the first one
+//     if(auto obj = rootObjs->firstObject()){
+//         auto gameObj = static_cast<GameObject*>(obj);
+//         editor::move(gameObj->getPosition());
+//         editor::setLayer(gameObj->m_editorLayer);
+//     }
+// }
+
+// //CCPoint roundToGrid(const CCPoint& point){
+// //    return {
+// //        (floor(point.x/editor::constants::GRID_SIZE)+0.5f)*editor::constants::GRID_SIZE,
+// //        (floor(point.y/editor::constants::GRID_SIZE)+0.5f)*editor::constants::GRID_SIZE
+// //    };
+// //}
+
+// void ParallaxMenuPopup::onCreateSetupButton(CCObject *)
+// {
+//     auto newSetupPos = editor::ui()->getGridSnappedPos(editor::center());
+
+//     //first create the area move triggre
+//     auto newAreaMoveTrigger = static_cast<EnterEffectObject*>(editor::layer()->createObject(
+//         trigger::AREA_MOVE_TRIGGER,
+//         newSetupPos+CCPoint{0.0f,0.0f},
+//         false
+//     ));
+//     auto newAdvancedFollowTrigger = static_cast<AdvancedFollowTriggerObject*>(editor::layer()->createObject(
+//         trigger::ADVANCED_FOLLOW_TRIGGER,
+//         newSetupPos+CCPoint{editor::constants::GRID_SIZE,0.0f},
+//         false
+//     ));
+
+//     //setup the area move trigger
+//     //why is this making length and movedist 3000 and not 9000????
+//     newAreaMoveTrigger->m_specialTarget = -3;//target c
+//     newAreaMoveTrigger->m_length = 9000*3;//multiply by 3 because the triggers store 3 times the value they display
+//     newAreaMoveTrigger->m_moveDistance = -9000*3;
+//     newAreaMoveTrigger->m_relative = true;
+//     newAreaMoveTrigger->m_directionType=0;
+//     newAreaMoveTrigger->m_inbound=true;
+//     //give it a group
+//     int rootID = editor::layer()->getNextFreeGroupID(ph::constants::EMPTY_SET);
+//     trigger::setTarget(newAreaMoveTrigger, rootID);
+//     int followID = editor::layer()->getNextFreeGroupID(ph::constants::EMPTY_SET);
+//     trigger::setTarget(newAdvancedFollowTrigger, followID);
+//     trigger::setCenter(newAdvancedFollowTrigger, rootID);
+
+//     //now add the two root and follow objects
+//     //these can be any object so im making them look like a gd icon cuz its cute ig
+
+//     //cuz i cant write this down in mod.json
+//     //	constexpr int rootObjectID = 3816;//icon face particle
+//     //	constexpr int followObjectID = 3805;//hollow square particle
+//     int rootObjectID = Mod::get()->getSettingValue<int>("int-root-object-ID");
+//     int followObjectID = Mod::get()->getSettingValue<int>("int-follow-object-ID");
+
+//     auto rootObject = editor::layer()->createObject(
+//         rootObjectID,
+//         newSetupPos+CCPoint{0.0f,-editor::constants::GRID_SIZE},
+//         false
+//     );
+//     auto followObject = editor::layer()->createObject(
+//         followObjectID,
+//         newSetupPos+CCPoint{0.0f,-editor::constants::GRID_SIZE},
+//         false
+//     );
+
+//     rootObject->addToGroup(rootID);
+//     followObject->addToGroup(followID);
+
+//     editor::object::scale(rootObject,Mod::get()->getSettingValue<float>("float-root-object-scale"));
+//     editor::object::scale(followObject,Mod::get()->getSettingValue<float>("float-follow-object-scale"));
+    
+//     //add the new setup to the list and select it
+//     m_selectedSetupIndex = m_parallaxSetupList.m_setups.size();
+//     m_parallaxSetupList.addSetup(newAreaMoveTrigger,newAdvancedFollowTrigger);
+//     loadSetupLayerList(getSelectedSetup());
+//     updateAllUI();
+// }
+
+// void ParallaxMenuPopup::onFindSetupInEditorButton(CCObject *)
+// {
+//     auto setup = getSelectedSetup();
+//     if(!setup) return;
+
+//     auto setupPosition = setup->m_areaMoveTriggerPtr->getPosition();
+//     editor::move(setupPosition);
+// }
+// ParallaxMenuPopup *ParallaxMenuPopup::create()
+// {
+//     auto ret = new ParallaxMenuPopup();
+//     if (ret->init()) {
+//         ret->autorelease();
+//         return ret;
+//     }
+//     delete ret;
+//     return nullptr; 
+// }
+// ParallaxSetup * ParallaxMenuPopup::getSelectedSetup()
+// {
+//     //if m_selectedSetupIndex is changed to be an unsigned int later the less than zero check isnt needed
+//     if(m_selectedSetupIndex<0) return nullptr;
+//     if(m_selectedSetupIndex>=m_parallaxSetupList.m_setups.size()) return nullptr;
+//     return &m_parallaxSetupList.m_setups[m_selectedSetupIndex];
+// }
+// void ParallaxMenuPopup::scrollToLayerIndex(int index)
+// {
+//     float targetY = LAYER_NODE_HEIGHT*float(index);
+//     //offset it to be the middle of the node
+//     targetY+=LAYER_NODE_HEIGHT/2.0f;
+//     //offset to be in the middle of the list
+//     targetY-=LAYER_LIST_SCROLL_LAYER_HEIGHT/2.0f;
+
+//     m_scrollLayer->setScrollY(targetY,true);
+// }
+// ParallaxMenuPopup::~ParallaxMenuPopup()
+// {
+//     Popup::~Popup();
+
+//     if(m_upListener)
+//         m_upListener->destroy();
+	
+//     if(m_downListener)
+//         m_downListener->destroy();
+// }
+// void ParallaxMenuPopup::updateAllUI()
+// {
+//     updateSetupActionButtons();
+//     updateLayerListHint();
+//     updateSetupSelector();
+//     updateSetupDurationInput();
+// }
+// void ParallaxMenuPopup::addLayerNodeToList(ParallaxSetupLayer *layer)
+// {
+//     //if we need to add a new node do that
+//     //this could probably be optimized later
+//     auto existingLayers = m_layerListMenu->getChildrenExt();
+
+//     if (m_nextLayerListNode >= existingLayers.size()){
+//         auto layerNode = ParallaxMenuLayerNode::create({LAYER_LIST_WIDTH,LAYER_NODE_HEIGHT},layer);
+//         m_layerListMenu->addChild(layerNode);
+//     }else{
+//         auto layerNode = static_cast<ParallaxMenuLayerNode*>(existingLayers[m_nextLayerListNode]);
+//         layerNode->setLayer(layer);
+//         layerNode->setVisible(true);
+//     }
+
+//     m_nextLayerListNode++;
+// }
+
+// size_t ParallaxMenuPopup::getFocusedLayer()
+// {
+//     auto setup = getSelectedSetup();
+//     if(!setup) return SIZE_MAX;
+
+//     auto existingLayers = m_layerListMenu->getChildrenExt();
+//     //first get the focused layer
+//     for(size_t i=0;i<setup->getLayerCount();i++){
+//         auto layerNode = static_cast<ParallaxMenuLayerNode*>(existingLayers[i]);
+//         if(layerNode->getFocused()) return i;
+//     }
+
+//     return SIZE_MAX;
+// }
+
+// void ParallaxMenuPopup::changeFocusedLayer(int indexOffset)
+// {
+//     auto setup = getSelectedSetup();
+//     if(!setup) return;
+
+//     size_t focusedLayer = getFocusedLayer();
+//     if(focusedLayer==SIZE_MAX) return;//if there is no focused layer
+
+//     size_t targetLayer = focusedLayer;
+//     //for now only support +1 and -1 cuz unsigned means i cant use negative numbers
+//     if(indexOffset<0){
+//         //-1
+//         if(focusedLayer==0){
+//             targetLayer = setup->getLayerCount()-1;
+//         }else{
+//             targetLayer--;
+//         }
+//     }else{
+//         //+1
+//         targetLayer++;
+//         if(targetLayer>=setup->getLayerCount()){
+//             targetLayer=0;
+//         }
+//     }
+
+//     auto existingLayers = m_layerListMenu->getChildrenExt();
+//     static_cast<ParallaxMenuLayerNode*>(existingLayers[targetLayer])->focus();
+
+//     scrollToLayerIndex(targetLayer);
+// }
